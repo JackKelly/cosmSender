@@ -5,7 +5,7 @@ If an API request fails then the data is saved in the cache
 and sent when the API request next succeeds.
 
 Installation:
-    Place this file is a directory.
+    Place this file in a directory.
     Add that directory to the environment variable PYTHONPATH
 
 Usage:
