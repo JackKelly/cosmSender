@@ -150,7 +150,7 @@ class CosmSender( object ):
             raise
 
 
-
+# Basic testing code:
 if __name__ == '__main__':
 
     dataStreamDefaults = {
