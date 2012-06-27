@@ -38,6 +38,9 @@ Usage:
 >>> # This point will be sent together with the previous data point.
 >>> c.sendData('8','3')
 
+>>> # Flush cache before finishing
+>>> c.flush()
+
 '''
 
 import urllib2 # for sending data to Cosm
@@ -64,6 +67,8 @@ class CosmSender( object ):
         """
         Sends data to Cosm.
 
+        dataStreamID and currentValue must both be strings.
+
         'cacheSize' is the number of datapoints to cache before sending to Cosm.
         """
         
@@ -73,7 +78,7 @@ class CosmSender( object ):
             raise TypeError('currentValue must be a str or unicode object.')
 
         if debug:
-            print 'sendData(dataStreamID=%s, currentValue=%s)' % (dataStreamID, currentValue)
+            print '\nsendData(dataStreamID=%s, currentValue=%s)' % (dataStreamID, currentValue)
 
         if self.cache.has_key( dataStreamID ):            
             # Add datapoint to cache
@@ -87,11 +92,16 @@ class CosmSender( object ):
             if debug:
                 print '  Added to cache: ' + str(self.cache[dataStreamID]['datapoints'][-1])
 
-            if len(self.cache[ dataStreamID ]['datapoints']) > self.cacheSize:            
-                self.sendCacheToCosm( debug )
+            if len(self.cache[ dataStreamID ]['datapoints']) > self.cacheSize:  
+                try:
+                    self.sendCacheToCosm( dataStreamID, debug )
+                except Exception, e:
+                    sys.stderr.write('WARNING: An error occured sending data to Cosm.')
+                    sys.stderr.write(str(e))
+                    sys.stderr.write('I will store this data and try to re-send later')
         
         else:
-            # self.cache has to key corresponding to dataStreamID.
+            # self.cache has no key corresponding to dataStreamID.
             # This implies that we haven't yet sent any data to Cosm for this ID 
             # so we must send the dataStreamDefaults to Cosm for this ID
             self.cache[ dataStreamID ] = {'datapoints':[]}
@@ -108,22 +118,54 @@ class CosmSender( object ):
                 raise
 
 
-
-    def sendCacheToCosm( self, debug=False ):
+    def flush( self, debug=False ):
+        """
+        Flush cache.
+        """
         for dataStreamID in self.cache.keys():
             if debug:
-                print 'dataStreamID = ' + dataStreamID
-            if self.cache[dataStreamID]['datapoints'] != []:
-                url = 'http://api.cosm.com/v2/feeds/'+self.feed+'/datastreams/'+ dataStreamID +'/datapoints'
-                jsonData = json.dumps( self.cache[dataStreamID] )
+                print "\nFlushing dataStreamID = %s" % (dataStreamID)
+            self.sendCacheToCosm( dataStreamID, debug )
 
-                try:
-                    self.sendJson( jsonData, url, 'POST', debug )
-                    self.cache[dataStreamID] = {'datapoints':[]} # if no exception occured then reset list
-                except Exception, e:
-                    sys.stderr.write('WARNING: An error occured sending data to Cosm.')
-                    sys.stderr.write(str(e))
-                    sys.stderr.write('I will store this data and try to re-send later')
+
+    def sendCacheToCosm( self, dataStreamID, debug=False ):
+        """
+        Sends contents of self.cache[dataStreamID] to Cosm.
+        If there are more than 500 datapoints then uses multiple API requests
+        (because Cosm can't handle more than 500 datapoints per API request)
+        """
+
+        url = 'http://api.cosm.com/v2/feeds/'+self.feed+'/datastreams/'+ dataStreamID +'/datapoints'
+
+        # The Cosm API can only handle 500 data points per API request
+        # But let's play safe and assume it can only handle 450
+        maxDataPoints = 450
+        numAPIrequestsRequired = (len( self.cache[dataStreamID]['datapoints'] ) // maxDataPoints) + 1
+
+        if debug:
+            print '\nsendCacheToCosm( dataStreamID = %s )' % dataStreamID
+            print ' numAPIrequestsRequired = %d' % (numAPIrequestsRequired)
+
+        success = True
+
+        for APIrequest in range(0, numAPIrequestsRequired):
+
+            startIndex = APIrequest*maxDataPoints
+            endIndex   = (APIrequest+1)*maxDataPoints
+            jsonData = json.dumps( {"datapoints": self.cache[dataStreamID]['datapoints'][startIndex:endIndex]  } )
+
+            if debug:
+                print '\n startIndex=%d, endIndex=%d ' % (startIndex, endIndex)
+                print ' lenght = %d' % (len(self.cache[dataStreamID]['datapoints']))
+
+            try:
+                self.sendJson( jsonData, url, 'POST', debug )
+            except Exception, e:
+                success = False
+                raise
+
+        if success:
+            self.cache[dataStreamID] = {'datapoints':[]} # if no exception occured then reset list
 
 
     def sendJson( self, jsonData, url, method, debug=False ):
@@ -134,7 +176,7 @@ class CosmSender( object ):
         '''
         
         if debug:
-            print 'sendJson'
+            print '\nsendJson'
             print '  jsonData = ' + jsonData
             print '  url      = ' + url
             print '  method   = ' + method
@@ -161,18 +203,12 @@ if __name__ == '__main__':
                     }
             }
 
-    apikey = "" # SET THIS!
-    feed   = "" # SET THIS!
+    apikey = "42wRfJn_LfA_VInzvT6mnT-j9KJ4XPaSrWrBkjuV27U" # SET THIS!
+    feed   = "65024" # SET THIS!
 
-    p = CosmSender(apikey, feed, dataStreamDefaults, 1)
+    p = CosmSender(apikey, feed, dataStreamDefaults, 650)
 
-
-    p.sendData('6',   '10', True)
-    p.sendData('1',   '10', True)
-    time.sleep(5)
-    p.sendData('6',  '100', True)
-    p.sendData('1',   '100', True)
-    time.sleep(5)
-    p.sendData('6', '1000', True)
-    p.sendData('1',   '1000', True)
+    for i in range(0,700):
+        p.sendData('6',  str(i), True)
     
+    p.flush(True)
