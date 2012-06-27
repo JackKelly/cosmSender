@@ -203,8 +203,8 @@ if __name__ == '__main__':
                     }
             }
 
-    apikey = "42wRfJn_LfA_VInzvT6mnT-j9KJ4XPaSrWrBkjuV27U" # SET THIS!
-    feed   = "65024" # SET THIS!
+    apikey = "" # SET THIS!
+    feed   = "" # SET THIS!
 
     p = CosmSender(apikey, feed, dataStreamDefaults, 650)
 
