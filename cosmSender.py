@@ -96,9 +96,9 @@ class CosmSender( object ):
                 try:
                     self.sendCacheToCosm( dataStreamID, debug )
                 except Exception, e:
-                    sys.stderr.write('WARNING: An error occured sending data to Cosm.')
+                    sys.stderr.write('WARNING: An error occured sending data to Cosm: ')
                     sys.stderr.write(str(e))
-                    sys.stderr.write('I will store this data and try to re-send later')
+                    sys.stderr.write(' CosmSender will store this data and try to re-send later.\n')
         
         else:
             # self.cache has no key corresponding to dataStreamID.
