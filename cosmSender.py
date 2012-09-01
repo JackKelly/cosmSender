@@ -25,7 +25,7 @@ Usage:
 >>> # use cacheSize=0 to send data to Cosm as soon as it arrives at this script
 
 >>> # Send data for dataStream '8' with value '1'.
->>> # Because this is the first time that we have referenced dataStream '8', 
+>>> # Because this is the first time that we have referenced dataStream '8',
 >>> # CosmSender will send Cosm the dataStreamDefaults for dataStream '8'
 >>> c.sendData('8','1')
 
@@ -43,16 +43,17 @@ Usage:
 
 '''
 
-import urllib2 # for sending data to Cosm
-import json    # for assembling JSON data for Cosm
+import urllib2  # for sending data to Cosm
+import json  # for assembling JSON data for Cosm
 import time
 import sys
 
-class CosmSender( object ):
 
-    def __init__( self, api_key, feed, dataStreamDefaults={}, cacheSize=0 ):
+class CosmSender(object):
+
+    def __init__(self, api_key, feed, dataStreamDefaults={}, cacheSize=0):
         self.api_key = api_key
-        self.feed    = str(feed)
+        self.feed = str(feed)
         self.dataStreamDefaults = dataStreamDefaults
         self.cache = {}
         self.cacheSize = cacheSize
@@ -62,85 +63,110 @@ class CosmSender( object ):
         if not isinstance(self.api_key, (str, unicode)):
             raise TypeError('api_key must be a str or unicode.')
 
+        self.get_streams()
 
-    def sendData( self, dataStreamID, currentValue, debug=False ):
+    def get_streams(self):
+        """Bootstrap the cache with the feeds we know about."""
+        streams = self.getJson(self.get_url(json=True))
+        for stream in streams['datastreams']:
+            s_id = stream.pop('id')
+            self.cache[s_id] = stream
+
+    def get_url(self, stream=None, json=False):
+        base = 'http://api.cosm.com/v2/feeds/%s' % self.feed
+        if stream:
+            url = "/".join([base, stream])
+        else:
+            url = base
+
+        if json:
+            url += ".json"
+
+        return url
+
+    def sendData(self, dataStreamID, currentValue, debug=False):
         """
         Sends data to Cosm.
 
         dataStreamID and currentValue must both be strings.
 
-        'cacheSize' is the number of datapoints to cache before sending to Cosm.
+        'cacheSize' is the number of datapoints to cache before sending to
+        Cosm.
         """
-        
+
         if not isinstance(dataStreamID, (str, unicode)):
             raise TypeError('dataStreamID must be a str or unicode object.')
         if not isinstance(currentValue, (str, unicode)):
             raise TypeError('currentValue must be a str or unicode object.')
 
         if debug:
-            print '\nsendData(dataStreamID=%s, currentValue=%s)' % (dataStreamID, currentValue)
+            print '\nsendData(dataStreamID=%s, currentValue=%s)' % (
+                dataStreamID, currentValue)
 
-        if self.cache.has_key( dataStreamID ):            
+        if dataStreamID in self.cache:
             # Add datapoint to cache
             ISO8601_time = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
 
-            self.cache[ dataStreamID ]['datapoints'].append({
-                    "at": ISO8601_time,
-                    "value": currentValue
-                    })
+            self.cache[dataStreamID].setdefault('datapoints', []).append({
+                "at": ISO8601_time,
+                "value": currentValue
+            })
 
             if debug:
-                print '  Added to cache: ' + str(self.cache[dataStreamID]['datapoints'][-1])
+                print '  Added to cache: ' + str(
+                    self.cache[dataStreamID]['datapoints'][-1])
 
-            if len(self.cache[ dataStreamID ]['datapoints']) > self.cacheSize:  
+            if len(self.cache[dataStreamID]['datapoints']) > self.cacheSize:
                 try:
-                    self.sendCacheToCosm( dataStreamID, debug )
+                    self.sendCacheToCosm(dataStreamID, debug)
                 except Exception, e:
-                    sys.stderr.write('WARNING: An error occured sending data to Cosm: ')
+                    sys.stderr.write(
+                        'WARNING: An error occured sending data to Cosm: ')
                     sys.stderr.write(str(e))
-                    sys.stderr.write(' CosmSender will store this data and try to re-send later.\n')
-        
+                    sys.stderr.write(
+                        " CosmSender will store this data and try "
+                        "to re-send later.\n")
         else:
             # self.cache has no key corresponding to dataStreamID.
-            # This implies that we haven't yet sent any data to Cosm for this ID 
+            # This implies that we haven't yet sent any data to Cosm for it
             # so we must send the dataStreamDefaults to Cosm for this ID
-            self.cache[ dataStreamID ] = {'datapoints':[]}
-            dataStreamDict       = self.dataStreamDefaults.copy()
+            self.cache[dataStreamID] = {'datapoints': []}
+            dataStreamDict = self.dataStreamDefaults.copy()
             dataStreamDict['id'] = dataStreamID
             dataStreamDict['current_value'] = currentValue
-            jsonData =  json.dumps({
-                          "version":"1.0.0",
-                          "datastreams": [ dataStreamDict ]
-                        })
+            jsonData = json.dumps({
+                "version": "1.0.0",
+                "datastreams": [dataStreamDict],
+            })
             try:
-                self.sendJson( jsonData, 'http://api.cosm.com/v2/feeds/'+self.feed, 'PUT', debug )
+                self.sendJson(jsonData, self.get_url(), 'PUT', debug)
             except Exception, e:
                 raise
 
-
-    def flush( self, debug=False ):
+    def flush(self, debug=False):
         """
         Flush cache.
         """
         for dataStreamID in self.cache.keys():
             if debug:
                 print "\nFlushing dataStreamID = %s" % (dataStreamID)
-            self.sendCacheToCosm( dataStreamID, debug )
+            self.sendCacheToCosm(dataStreamID, debug)
 
-
-    def sendCacheToCosm( self, dataStreamID, debug=False ):
+    def sendCacheToCosm(self, dataStreamID, debug=False):
         """
         Sends contents of self.cache[dataStreamID] to Cosm.
         If there are more than 500 datapoints then uses multiple API requests
         (because Cosm can't handle more than 500 datapoints per API request)
         """
 
-        url = 'http://api.cosm.com/v2/feeds/'+self.feed+'/datastreams/'+ dataStreamID +'/datapoints'
+        url = '/'.join([
+            self.get_url(), 'datastreams', dataStreamID, 'datapoints'])
 
         # The Cosm API can only handle 500 data points per API request
         # But let's play safe and assume it can only handle 450
         maxDataPoints = 450
-        numAPIrequestsRequired = (len( self.cache[dataStreamID]['datapoints'] ) // maxDataPoints) + 1
+        numAPIrequestsRequired = (
+            len(self.cache[dataStreamID]['datapoints']) // maxDataPoints) + 1
 
         if debug:
             print '\nsendCacheToCosm( dataStreamID = %s )' % dataStreamID
@@ -150,45 +176,70 @@ class CosmSender( object ):
 
         for APIrequest in range(0, numAPIrequestsRequired):
 
-            startIndex = APIrequest*maxDataPoints
-            endIndex   = (APIrequest+1)*maxDataPoints
-            jsonData = json.dumps( {"datapoints": self.cache[dataStreamID]['datapoints'][startIndex:endIndex]  } )
+            startIndex = APIrequest * maxDataPoints
+            endIndex = (APIrequest + 1) * maxDataPoints
+            datapoints = self.cache[dataStreamID]['datapoints']
+            jsonData = json.dumps({
+                "datapoints": datapoints[startIndex:endIndex]
+            })
 
             if debug:
                 print '\n startIndex=%d, endIndex=%d ' % (startIndex, endIndex)
-                print ' lenght = %d' % (len(self.cache[dataStreamID]['datapoints']))
+                print ' lenght = %d' % (
+                    len(self.cache[dataStreamID]['datapoints']))
 
             try:
-                self.sendJson( jsonData, url, 'POST', debug )
-            except Exception, e:
+                self.sendJson(jsonData, url, 'POST', debug)
+            except Exception:
                 success = False
                 raise
 
         if success:
-            self.cache[dataStreamID] = {'datapoints':[]} # if no exception occured then reset list
+            # if no exception occured then reset list
+            self.cache[dataStreamID] = {'datapoints': []}
 
-
-    def sendJson( self, jsonData, url, method, debug=False ):
+    def sendJson(self, jsonData, url, method, debug=False):
         '''
         Send JSON to Cosm.
         Adapted from http://stackoverflow.com/a/111988
         example settings for 'method' include 'PUT' and 'POST'
         '''
-        
+
         if debug:
             print '\nsendJson'
             print '  jsonData = ' + jsonData
             print '  url      = ' + url
             print '  method   = ' + method
 
-        opener  = urllib2.build_opener(urllib2.HTTPHandler)
+        opener = urllib2.build_opener(urllib2.HTTPHandler)
         request = urllib2.Request(url, data=jsonData)
         request.add_header('X-ApiKey', self.api_key)
         request.get_method = lambda: method
 
         try:
             opener.open(request)
-        except Exception, e:
+        except Exception:
+            raise
+
+    def getJson(self, url, debug=False):
+        '''
+        Get JSON from Cosm.
+        Adapted from http://stackoverflow.com/a/111988
+        '''
+
+        if debug:
+            print '\ngetJson'
+            print '  url      = ' + url
+
+        opener = urllib2.build_opener(urllib2.HTTPHandler)
+        request = urllib2.Request(url)
+        request.add_header('X-ApiKey', self.api_key)
+        request.get_method = lambda: "GET"
+
+        try:
+            response = opener.open(request)
+            return json.loads(response.read())
+        except Exception:
             raise
 
 
@@ -196,19 +247,20 @@ class CosmSender( object ):
 if __name__ == '__main__':
 
     dataStreamDefaults = {
-            "min_value"    : "0.0",
-            "unit": { "type"  : "derivedSI",
-                      "label" : "watt",
-                      "symbol": "W"
-                    }
+            "min_value": "0.0",
+            "unit": {
+                "type": "derivedSI",
+                "label": "watt",
+                "symbol": "W"
             }
+        }
 
-    apikey = "" # SET THIS!
-    feed   = "" # SET THIS!
+    apikey = ""  # SET THIS!
+    feed = ""  # SET THIS!
 
     p = CosmSender(apikey, feed, dataStreamDefaults, 650)
 
-    for i in range(0,700):
-        p.sendData('6',  str(i), True)
-    
+    for i in range(0, 700):
+        p.sendData('6', str(i), True)
+
     p.flush(True)
