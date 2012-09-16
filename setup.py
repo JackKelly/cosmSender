@@ -4,7 +4,7 @@ setup(
     name = "pycosm",
     version = "0.1",
     packages = find_packages(),
-    install_requires = ['pyserial>=2.4'],
+    install_requires = ['pyserial>=2.4', 'simplejson'],
     author = "JackKelly",
     author_email = "",
     description = "Sender with caching for cosm",
