@@ -44,7 +44,10 @@ Usage:
 '''
 
 import urllib2  # for sending data to Cosm
-import json  # for assembling JSON data for Cosm
+try:
+    import json  # for assembling JSON data for Cosm
+except ImportError:
+    import simplejson as json
 import time
 import sys
 
