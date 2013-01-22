@@ -11,5 +11,6 @@ setup(
     license = "",
     keywords = "cosm python",
     url = "http://github.com/JackKelly/cosmSender",
+    download_url = "https://github.com/JackKelly/cosmSender/tarball/master",
     long_description="Use python to send stuff to cosm",
 )
