@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name = "cosmSender",
-    version = "0.11",
+    version = "0.12",
     packages = find_packages(),
     install_requires = ['pyserial>=2.4', 'simplejson'],
     author = "Jack Kelly",
