@@ -2,15 +2,15 @@ from setuptools import setup, find_packages
 
 setup(
     name = "cosmSender",
-    version = "0.1",
+    version = "0.11",
     packages = find_packages(),
     install_requires = ['pyserial>=2.4', 'simplejson'],
-    author = "JackKelly",
+    author = "Jack Kelly",
     author_email = "",
-    description = "Sender with caching for cosm",
-    license = "",
+    description = "Sender with caching for Cosm",
+    license = "MIT",
     keywords = "cosm python",
     url = "http://github.com/JackKelly/cosmSender",
     download_url = "https://github.com/JackKelly/cosmSender/tarball/master",
-    long_description="Use python to send stuff to cosm",
+    long_description="Use Python to send stuff to Cosm",
 )
