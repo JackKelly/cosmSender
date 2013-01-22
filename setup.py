@@ -12,5 +12,5 @@ setup(
     keywords = "cosm python",
     url = "http://github.com/JackKelly/cosmSender",
     download_url = "https://github.com/JackKelly/cosmSender/tarball/master",
-    long_description="Use Python to send stuff to Cosm",
+    long_description = open('README').read()
 )
