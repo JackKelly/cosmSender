@@ -2,11 +2,11 @@ from setuptools import setup, find_packages
 
 setup(
     name = "cosmSender",
-    version = "0.12",
+    version = "0.1",
     packages = find_packages(),
-    install_requires = ['pyserial>=2.4', 'simplejson'],
+    install_requires = ['simplejson'],
     author = "Jack Kelly",
-    author_email = "",
+    author_email = "jack-list@xlk.org.uk",
     description = "Sender with caching for Cosm",
     license = "MIT",
     keywords = "cosm python",
