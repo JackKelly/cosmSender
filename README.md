@@ -36,4 +36,8 @@ c.sendData('8','2')
 # Send another datapoint.
 # This point will be sent together with the previous data point.
 c.sendData('8','3')
+
+# Flush cache before finishing
+c.flush()
+
 ```
