@@ -11,7 +11,7 @@ Usage:
 ```python
 from cosmSender import CosmSender
 
-# Now set configure the details for newly created datastreams
+# Configure data stream defaults
 dataStreamDefaults = {
                       "min_value"    : "0.0",
                       "unit": { "type"  : "derivedSI",
@@ -23,7 +23,7 @@ dataStreamDefaults = {
 # Use cacheSize=0 to send data to Cosm as soon as it arrives at this script
 c=CosmSender(<APIKEY>, <FEED>, dataStreamDefaults, cacheSize=1)
 
-# Send data for dataStream '8' with value '1'.
+# Send data to dataStream '8' with value '1'.
 # Because this is the first time that we have referenced dataStream '8', 
 # CosmSender will send Cosm the dataStreamDefaults for dataStream '8'
 c.sendData('8','1')
